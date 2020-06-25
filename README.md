@@ -1,2 +1,2 @@
 # chatclient
-multithreaded chat client 
+Multithreaded Chat Client that in it's current state barely works.
