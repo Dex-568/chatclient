@@ -1,4 +1,3 @@
-
 import socket, argparse, threading
 
 # stick this in a function or some shit?
@@ -18,19 +17,15 @@ def handle_conn(conn, clientlist):
     # probably add a sleep for the receive so i dont receive every tick or some dumb shit
     # gets the connection and then spits it back out for everyone
     while not_fucked_to_all_shit:
-        print("at handle_conn")
         res = conn.recv(1024)
 
         # stops it from spamming the server when a disconnect occurs
         if not res.decode():
-            print("Client returned empty string, breaking thread")
+            print('Client returned empty string, breaking thread')
             remove(conn, clientlist)
             not_fucked_to_all_shit = False # oh fuck
         else:
-            print(res.decode()+" from handle_conn")
-            print(type(res))
-            print(res)
-            broadcast(res, conn, clientlist)
+            messagebroadcast(res, conn, clientlist)
 
 def main(ip, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -47,6 +42,9 @@ def main(ip, port):
         conn, addr = s.accept()
         clientlist.append(conn)
         print('Connection from {}:{}\n'.format(addr[0], addr[1]))
+        # unthreaded broadcast when a new connection occurs
+
+
         # make it fancy and threaded,
         # then people can simultaneously connect
         c_handle = threading.Thread(
@@ -56,19 +54,15 @@ def main(ip, port):
         # have a sort of p2p model or server? fuck knows
         c_handle.start()
 
-def broadcast(message, connection, clientlist):
-    print('at broadcast')
+def messagebroadcast(message, connection, clientlist):
     # my dumb ass thought it would just magically send it to everyone so here
     # i am with this fucking function
     for clients in clientlist:
         # uses the conn object to check if it is different, if so broadcast
         if clients != connection:
             try:
-                print('client message broadcasted')
-                # somehow its getting fucked up from the creation to here
                 clients.send(message)
             except:
-                print('client removed')
                 clients.close()
                 # if no answer, remove the client from list
                 remove(clients,clientlist)
