@@ -2,6 +2,8 @@ import socket
 import threading
 import sys
 import datetime
+import ssl
+import os
 
 
 def main():
@@ -12,7 +14,7 @@ def main():
     print('------------------')
     print('Dex\'s Chat Server')
     print('Current Time: {}'.format(x))
-    print('Enter a command below or type help for a command list')
+    print('Enter \'new\' or \'newenc\' to get started or type help for a command list')
 
     while True:
         menuinput = input('\n> ')
@@ -21,7 +23,11 @@ def main():
             help = comm_help()
             print(help)
         elif menuinput == 'new':
-            serv_handle()
+            encstate = False
+            serv_handle(encstate)
+        elif menuinput == 'newenc':
+            encstate = True
+            serv_handle(encstate)
         elif menuinput == 'exit':
             exit()
         elif menuinput == 'about':
@@ -36,8 +42,10 @@ def comm_help():
     help_list = {}
     help_list['help'] = 'Displays this help message.'
     help_list['about'] = 'Information about this program and its creator.'
-    help_list['connect'] = '''Host a chat room for multiple users to connect
+    help_list['new'] = '''Host a chat room for multiple users to connect
                             to.'''
+    help_list['newenc'] = '''Host a chat room with SSL/TLS encryption for
+                             multiple users to connect to.'''
     help_list['exit'] = 'Exits the program.'
 
     # make a nice little top part to the help bar
@@ -64,22 +72,39 @@ def handle_conn(conn, clientlist):
             remove(conn, clientlist)
             not_fucked_to_all_shit = False  # oh fuck
         else:
+            print(res.decode())
             messagebroadcast(res, conn, clientlist)
 
 
-def serv_handle():
+def serv_handle(encstate):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     ip = input('Enter an IP to host your chat room on. (Leave blank for localhost): ')
     if ip is None:
         ip = '127.0.0.1'
-        print(ip)
 
     port = input('Enter port: ')
     port = int(port)
 
+    if port < 1000 and os.geteuid() != 0:
+        print('Binding to privileged ports requires root privileges. Goodbye!')
+        sys.exit(1)
+
     # stops that shitty 'address already in use' shit while testing
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+    if encstate is True:
+        # checking if a cert exists and making a new one if not
+
+        if os.path.isfile('servcert.pem'):
+            print('An SSL Certificate has been found. Using this.')
+        else:
+            print('Creating a new SSL Certificate for authentication (this only works on local machines for now)')
+            os.system("openssl req -x509 -newkey rsa:4096 -keyout servkey.key -out servcert.pem -days 1 -nodes -subj '/CN=localhost'")
+
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        context.load_cert_chain('servcert.pem', 'servkey.key')
 
     try:
         s.bind((ip, port))
@@ -91,24 +116,42 @@ def serv_handle():
 
     print('listening on {}:{}\n'.format(ip, port))
 
-    while True:
-        conn, addr = s.accept()
-        clientlist.append(conn)
-        print('Connection from {}:{}\n'.format(addr[0], addr[1]))
+    if encstate is True:
+        encsock = context.wrap_socket(s, server_side=True)
 
-        # make it fancy and threaded,
-        # then people can simultaneously connect
-        c_handle = threading.Thread(
-            target=handle_conn,
-            args=(conn, clientlist,)
-        )
-        # have a sort of p2p model or server? fuck knows
-        c_handle.start()
+        while True:
+            conn, addr = encsock.accept()
+            clientlist.append(conn)
+            print('Connection from {}:{}\n'.format(addr[0], addr[1]))
+
+            # make it fancy and threaded,
+            # then people can simultaneously connect
+            c_handle = threading.Thread(
+                target=handle_conn,
+                args=(conn, clientlist,)
+            )
+            # have a sort of p2p model or server? fuck knows
+            c_handle.start()
+
+    else:
+        # i do love writing the same code again just for unencrypted traffic
+        while True:
+            conn, addr = s.accept()
+            clientlist.append(conn)
+            print('Connection from {}:{}\n'.format(addr[0], addr[1]))
+
+            c_handle = threading.Thread(
+                target=handle_conn,
+                args=(conn, clientlist,)
+            )
+
+            c_handle.start()
 
 
 def messagebroadcast(message, connection, clientlist):
     # my dumb ass thought it would just magically send it to everyone so here
     # i am with this fucking function
+
     for clients in clientlist:
         # uses the conn object to check if it is different, if so broadcast
         if clients != connection:
