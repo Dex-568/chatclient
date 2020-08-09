@@ -77,9 +77,9 @@ def comm_help():
 def conn_handle(encstate):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    ip = input('Enter IP:')
-    if ip is None:
-        ip = '127.0.0.1'
+    ip = input('Enter IP to connect to. (Leave blank for localhost): ')
+    if ip == "":
+        ip = 'localhost'
 
     port = input('Enter Port: ')
     port = int(port)
@@ -107,6 +107,10 @@ def conn_handle(encstate):
         try:
             print('Connecting to {}:{} using TLS'.format(ip, port))
             encsock.connect((ip, port))
+            # this gets the cert info, not the actual cert
+            # requires a wrapped socket and connection
+            cert = encsock.getpeercert()
+            print(cert)
         except Exception as e:
             print(e)
 
@@ -133,14 +137,14 @@ def conn_handle(encstate):
             # select doesn't like python input and instead loves file objects
             # so sys.stdin it is
             for sock in read_sock:
-                if sock == encsock:
-                    servmessage = sock.recv(2048)
+                if sock == s:
+                    servmessage = encsock.recv(2048)
                     print(servmessage.decode())
                 else:
                     message = sys.stdin.readline()
                     # slap the username onto the front of the message
                     message = username+':'+message
-                    s.send(message.encode(encoding='utf-8'))
+                    encsock.send(message.encode(encoding='utf-8'))
 
                     # replay the message back
                     # because it won't get broadcasted to the sender

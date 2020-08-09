@@ -4,6 +4,7 @@ import sys
 import datetime
 import ssl
 import os
+import math
 
 
 def main():
@@ -14,7 +15,7 @@ def main():
     print('------------------')
     print('Dex\'s Chat Server')
     print('Current Time: {}'.format(x))
-    print('Enter \'new\' or \'newenc\' to get started or type help for a command list')
+    print('\nEnter \'new\' or \'newenc\' to get started or type help for a command list.')
 
     while True:
         menuinput = input('\n> ')
@@ -33,7 +34,7 @@ def main():
         elif menuinput == 'about':
             about()
         else:
-            print('Unknown command!\nType help for a command list.\n')
+            print('[!] Unknown command!\nType help for a command list.\n')
             continue
 
 
@@ -43,9 +44,9 @@ def comm_help():
     help_list['help'] = 'Displays this help message.'
     help_list['about'] = 'Information about this program and its creator.'
     help_list['new'] = '''Host a chat room for multiple users to connect
-                            to.'''
+       to.'''
     help_list['newenc'] = '''Host a chat room with SSL/TLS encryption for
-                             multiple users to connect to.'''
+          multiple users to connect to.'''
     help_list['exit'] = 'Exits the program.'
 
     # make a nice little top part to the help bar
@@ -61,16 +62,14 @@ def comm_help():
 
 
 def handle_conn(conn, clientlist):
-    not_fucked_to_all_shit = True  # fuck sake
     # gets the connection and then spits it back out for everyone
-    while not_fucked_to_all_shit:
+    while True:
         res = conn.recv(1024)
 
         # stops it from spamming the server when a disconnect occurs
         if not res.decode():
-            print('Client returned empty string, breaking thread')
+            print('[!] Client ({}) disconnected')
             remove(conn, clientlist)
-            not_fucked_to_all_shit = False  # oh fuck
         else:
             print(res.decode())
             messagebroadcast(res, conn, clientlist)
@@ -80,27 +79,37 @@ def serv_handle(encstate):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     ip = input('Enter an IP to host your chat room on. (Leave blank for localhost): ')
-    if ip is None:
-        ip = '127.0.0.1'
 
-    port = input('Enter port: ')
-    port = int(port)
+    if ip == "":
+        ip = 'localhost'
+
+    print(ip)
+    try:
+        port = input('Enter port: ')
+        port = int(port)
+    except ValueError:
+        print('[!] Port empty or not valid.')
+        # recursion probably isn't a good idea
+        # but let's just assume the user can type in a port
+        serv_handle(encstate)
 
     if port < 1000 and os.geteuid() != 0:
-        print('Binding to privileged ports requires root privileges. Goodbye!')
+        print('[!] Binding to privileged ports requires root privileges. Goodbye!')
         sys.exit(1)
 
     # stops that shitty 'address already in use' shit while testing
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     if encstate is True:
+        # all of this assumes that the user hasn't already made a self signed cert
         # checking if a cert exists and making a new one if not
 
         if os.path.isfile('servcert.pem'):
+
             print('An SSL Certificate has been found. Using this.')
         else:
             print('Creating a new SSL Certificate for authentication (this only works on local machines for now)')
-            os.system("openssl req -x509 -newkey rsa:4096 -keyout servkey.key -out servcert.pem -days 1 -nodes -subj '/CN=localhost'")
+            os.system("openssl req -x509 -newkey rsa:4096 -keyout servkey.key -out servcert.pem -days 4 -nodes -subj '/CN=localhost'")
 
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
@@ -111,10 +120,10 @@ def serv_handle(encstate):
     except Exception as e:
         print(e)
 
-    s.listen(3)  # probably going to change this
+    s.listen(5)  # probably going to change this
     clientlist = []
 
-    print('listening on {}:{}\n'.format(ip, port))
+    print('[*] Listening on {}:{}\n'.format(ip, port))
 
     if encstate is True:
         encsock = context.wrap_socket(s, server_side=True)
@@ -151,7 +160,6 @@ def serv_handle(encstate):
 def messagebroadcast(message, connection, clientlist):
     # my dumb ass thought it would just magically send it to everyone so here
     # i am with this fucking function
-
     for clients in clientlist:
         # uses the conn object to check if it is different, if so broadcast
         if clients != connection:
@@ -164,9 +172,11 @@ def messagebroadcast(message, connection, clientlist):
 
 
 def remove(connection, clientlist):
+    print('at remove')
+    print(clientlist)
     if connection in clientlist:
         clientlist.remove(connection)
-
+        print(clientlist)
 
 def about():
     print('''This program was made by Dex\nAll Rights Reserved and all that shit\n
