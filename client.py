@@ -88,7 +88,7 @@ def conn_handle(encstate):
         print('Binding to privileged ports requires root privileges. Goodbye!\n')
         sys.exit(1)
 
-    username = input('Enter username to connect under:')
+    username = input('Enter username to connect under (If none is given, one will be randomly generated):')
 
     if username is None:
         username = usernamegen()
@@ -102,15 +102,14 @@ def conn_handle(encstate):
         context = ssl.create_default_context()
         # use the cert for now until i make this shit work
         context.load_verify_locations('servcert.pem')
-        encsock = context.wrap_socket(s, server_hostname='localhost')
+        encsock = context.wrap_socket(s, server_hostname=ip)
 
         try:
             print('Connecting to {}:{} using TLS'.format(ip, port))
             encsock.connect((ip, port))
             # this gets the cert info, not the actual cert
             # requires a wrapped socket and connection
-            cert = encsock.getpeercert()
-            print(cert)
+
         except Exception as e:
             print(e)
 
@@ -120,10 +119,18 @@ def conn_handle(encstate):
         try:
             print('Connecting to {}:{}'.format(ip, port))
             s.connect((ip, port))
-        except Exception as e:
-            print(e)
+        except OSError as e:
+            if e.errno == 111:
+                print('[!] Connection Refused. Check IP and port and try again.')
+                # just having it exit instead of recursing back
+                sys.exit(1)
+            else:
+                print(e)
+                sys.exit(1)
 
         print('Connected to {}:{}'.format(ip, port))
+
+    commands = ['sslinfo', 'exit']
 
     if encstate is True:
         while True:
@@ -142,13 +149,42 @@ def conn_handle(encstate):
                     print(servmessage.decode())
                 else:
                     message = sys.stdin.readline()
-                    # slap the username onto the front of the message
-                    message = username+':'+message
-                    encsock.send(message.encode(encoding='utf-8'))
+                    # fucking newlines
+                    message = message.strip('\n')
 
-                    # replay the message back
-                    # because it won't get broadcasted to the sender
-                    print(message)
+                    # treat the message like a command if recognised
+                    if message in commands:
+
+                        # grabs the certificate from the server and parses
+                        # the information to be read by the user
+                        if message == 'sslinfo':
+                            cert = encsock.getpeercert()
+
+                            certkeys = list(cert.keys())
+                            certvalues = list(cert.values())
+
+                            # take the two commonname bits because there's no
+                            # way in hell im trying to parse them
+                            del certvalues[0:2]
+                            del certkeys[0:2]
+
+                            # do some wack shit i found on stackoverflow
+                            for v, k in zip(certvalues, certkeys):
+                                print('\n'+str(k)+":"+str(v))
+
+                        else:
+                            print('[*] User requested exit, exiting!')
+                            sys.exit(1)
+                    # otherwise ship it off to the server
+                    else:
+
+                        # slap the username onto the front of the message
+                        message = username+':'+message
+                        encsock.send(message.encode(encoding='utf-8'))
+
+                        # replay the message back
+                        # because it won't get broadcasted to the sender
+                        print(message)
     else:
         while True:
             # instead of just blindly sending and waiting for a response
@@ -165,8 +201,8 @@ def conn_handle(encstate):
                     servmessage = sock.recv(2048)
                     print(servmessage.decode())
                 else:
-                    message = sys.stdin.readline()
                     # slap the username onto the front of the message
+                    message = sys.stdin.readline()
                     message = username+':'+message
                     s.send(message.encode(encoding='utf-8'))
 

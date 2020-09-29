@@ -60,11 +60,16 @@ def comm_help():
     return top.rstrip('\n')
 
 
-def handle_conn(conn, clientlist):
+def handle_conn(conn, clientlist, s, addr):
+
     # gets the connection and then spits it back out for everyone
     while True:
-        res = conn.recv(1024)
-
+        try:
+            res = conn.recv(1024)
+        except ConnectionResetError:
+            print('Connection Reset By Peer!')
+            remove(conn, clientlist)
+            break
         # stops it from spamming the server when a disconnect occurs
         if not res.decode():
             remove(conn, clientlist)
@@ -133,7 +138,7 @@ def serv_handle(encstate):
             # then people can simultaneously connect
             c_handle = threading.Thread(
                 target=handle_conn,
-                args=(conn, clientlist,)
+                args=(conn, clientlist, s, addr, )
             )
             # have a sort of p2p model or server? fuck knows
             c_handle.start()
@@ -147,9 +152,8 @@ def serv_handle(encstate):
 
             c_handle = threading.Thread(
                 target=handle_conn,
-                args=(conn, clientlist,)
+                args=(conn, clientlist, s, addr, )
             )
-
             c_handle.start()
 
 
@@ -168,15 +172,24 @@ def messagebroadcast(message, connection, clientlist):
 
 
 def remove(connection, clientlist):
-    print(clientlist)
     if connection in clientlist:
         clientlist.remove(connection)
-        print(clientlist)
+        print('Client disconnected!')
+
 
 def about():
     print('''This program was made by Dex\nAll Rights Reserved and all that shit\n
     Find me on Discord: Dex#0002 or on twitter: @Dex568''')
     return
+
+
+def quit(encstate, c_handle, encsock, s):
+    # gracefully exit so this program doesn't shit itself and die
+
+    if encsock is True:
+        encsock.close()
+    else:
+        s.close()
 
 
 if __name__ == '__main__':
