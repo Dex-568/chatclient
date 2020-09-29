@@ -3,7 +3,7 @@
 - [x] get threading working and have multiple clients able to connect
 - [x] clean up the code a bit and make it look a bit more user friendly
 - [x] add ssl support without it breaking
-- [ ] make it a bit more verbose and fix the flow control
+- [x] make it a bit more verbose and fix the flow control
 - [ ] add kick/ban features? idk
 
 This is a little side hobby of mine to expand my knowledge of python with differerent libraries like threading and ssl.
