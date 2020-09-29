@@ -4,7 +4,6 @@ import sys
 import datetime
 import ssl
 import os
-import math
 
 
 def main():
@@ -68,7 +67,6 @@ def handle_conn(conn, clientlist):
 
         # stops it from spamming the server when a disconnect occurs
         if not res.decode():
-            print('[!] Client ({}) disconnected')
             remove(conn, clientlist)
         else:
             print(res.decode())
@@ -83,7 +81,6 @@ def serv_handle(encstate):
     if ip == "":
         ip = 'localhost'
 
-    print(ip)
     try:
         port = input('Enter port: ')
         port = int(port)
@@ -97,7 +94,7 @@ def serv_handle(encstate):
         print('[!] Binding to privileged ports requires root privileges. Goodbye!')
         sys.exit(1)
 
-    # stops that shitty 'address already in use' shit while testing
+    # stops that shitty 'address already in use' shit
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     if encstate is True:
@@ -105,7 +102,6 @@ def serv_handle(encstate):
         # checking if a cert exists and making a new one if not
 
         if os.path.isfile('servcert.pem'):
-
             print('An SSL Certificate has been found. Using this.')
         else:
             print('Creating a new SSL Certificate for authentication (this only works on local machines for now)')
@@ -123,7 +119,7 @@ def serv_handle(encstate):
     s.listen(5)  # probably going to change this
     clientlist = []
 
-    print('[*] Listening on {}:{}\n'.format(ip, port))
+    print('\n[*] Listening on {}:{}\n'.format(ip, port))
 
     if encstate is True:
         encsock = context.wrap_socket(s, server_side=True)
@@ -172,7 +168,6 @@ def messagebroadcast(message, connection, clientlist):
 
 
 def remove(connection, clientlist):
-    print('at remove')
     print(clientlist)
     if connection in clientlist:
         clientlist.remove(connection)
