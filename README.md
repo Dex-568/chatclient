@@ -11,6 +11,25 @@
 
 This is a little side hobby of mine to expand my knowledge of python with differerent libraries like threading and ssl.
 
---- Right now the SSL function only works on local machines due to the self signed certs and how they are set up ---
-
 To use it simply run server.py and follow the instructions, then connect a few client.py's and it's all smooth sailing from there.
+
+## server.py
+
+The server takes two arguments when choosing either an unencrypted (new) or encrypted (newenc) sessions. These would be the IP and port to listen on.
+
+Right now the server holds a sort of spectator role in that no commands can be issued from the server (mainly because I have no fucking clue) but it holds a log of messages sent.
+
+The server is multithreaded and can allow up to 3 clients (changeable in the code).
+
+## client.py
+
+The client takes 3 arguments when choosing either a unencrypted (connect) or encrypted (connectenc) sessions. These would be the IP, port and the username to connect under.
+
+The client can both receive messages from other clients and issue commands to the server/get information about the client.
+
+
+## SSL
+
+The ssl option first checks if you have already got a certificate saved within the directory, if none is found one will be generated with a time expiry of 4 days (changeable in the code).
+
+*Right now the SSL function only works on local machines due to the self signed certs and how they are set up*
