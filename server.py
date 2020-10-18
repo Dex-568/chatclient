@@ -3,6 +3,7 @@ import threading
 import sys
 import datetime
 import ssl
+import signal
 import os
 
 
@@ -196,5 +197,6 @@ if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt:
-        print('\nKeyboard Interrupt Received, Exiting!\n')
-        sys.exit(1)
+        print('\n[!] Keyboard Interrupt Received...\n')
+        # sys.exit() only exits the thread, need one that will just yeet the whole thing (nicely of course)
+        os.kill(os.getpid(), signal.SIGTERM)

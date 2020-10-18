@@ -29,12 +29,11 @@ def main():
 
     while True:
         menuinput = input('\n> ')
-        # this is absolutely terrible and i am ashamed
         # probably should whack this in a command handler
         # or make a command list and iterate through
         if menuinput == 'help':
-            help = comm_help()
-            print(help)
+            helpmenu = comm_help()
+            print(helpmenu)
         elif menuinput == 'connect':
             encstate = False
             conn_handle(encstate)
@@ -51,16 +50,11 @@ def main():
 
 
 def comm_help():
-
-    help_list = {}
-    help_list['help'] = 'Displays this help message.'
-    help_list['about'] = 'Information about this program and its creator.'
-    help_list['connect'] = '''Initialise a unencrypted connection to a chat room.
-                            (IP Based for now)'''
-    help_list['connectenc'] = '''Initialise an SSL/TLS encrypted connection
-                                 to a chat room. (IP Based for now)'''
-
-    help_list['exit'] = 'Exits the program.'
+    help_list = {'help': 'Displays this help message.',
+                 'about': 'Information about this program and its creator.',
+                 'connect': 'Initialise a unencrypted connection to a chat room. (IP Based for now)',
+                 'connectenc': 'Initialise an SSL/TLS encrypted connection to a chat room. (IP Based for now)',
+                 'exit': 'Exits the program.'}
 
     # make a nice little top part to the help bar
     top = '\n Command ' + ' - '
@@ -89,8 +83,7 @@ def conn_handle(encstate):
         sys.exit(1)
 
     username = input('Enter username to connect under (If none is given, one will be randomly generated):')
-
-    if username is None:
+    if not username:
         username = usernamegen()
 
     # start the whole tls/ssl shit
@@ -107,13 +100,11 @@ def conn_handle(encstate):
         try:
             print('Connecting to {}:{} using TLS'.format(ip, port))
             encsock.connect((ip, port))
-            # this gets the cert info, not the actual cert
-            # requires a wrapped socket and connection
-
         except Exception as e:
             print(e)
 
         print('Connected to {}:{} using {}'.format(ip, port, encsock.version()))
+
     else:
 
         try:
@@ -145,8 +136,15 @@ def conn_handle(encstate):
             # so sys.stdin it is
             for sock in read_sock:
                 if sock == s:
-                    servmessage = encsock.recv(2048)
-                    print(servmessage.decode())
+                    # the server will send empty strings when it get closed
+                    # interpreting these as the server closing
+                    servmessage = encsock.recv(1024)
+                    if not servmessage:
+                        print("Client received empty string, disconnecting.")
+                        sys.exit(1)
+                    else:
+                        print(servmessage.decode())
+
                 else:
                     message = sys.stdin.readline()
                     # fucking newlines
@@ -198,8 +196,12 @@ def conn_handle(encstate):
             # so sys.stdin it is
             for sock in read_sock:
                 if sock == s:
-                    servmessage = sock.recv(2048)
-                    print(servmessage.decode())
+                    servmessage = s.recv(2048)
+                    if not servmessage:
+                        print("Client received empty string, disconnecting.")
+                        sys.exit(1)
+                    else:
+                        print(servmessage.decode())
                 else:
                     # slap the username onto the front of the message
                     message = sys.stdin.readline()
