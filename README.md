@@ -5,7 +5,7 @@
 - [x] add ssl support without it breaking
 - [x] make it a bit more verbose and fix the flow control
 - [x] handle thread ending when disconnect occurs so it doesn't shit itself and die
-- [ ] help command when connecting (client + server?)
+- [x] help command when connecting (client + server?)
 - [ ] instead of just catching the keyboard interrupt, go back to the main menu (make sure the thread ends or else we'll be in for a world of pain)
 - [ ] add kick/ban features? idk
 
