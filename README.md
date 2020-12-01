@@ -17,7 +17,7 @@ To use it simply run server.py and follow the instructions, then connect a few c
 
 The server takes two arguments when choosing either an unencrypted (new) or encrypted (newenc) sessions. These would be the IP and port to listen on.
 
-Right now the server holds a sort of spectator role in that no commands can be issued from the server (mainly because I have no fucking clue) but it holds a log of messages sent.
+Right now the server holds a sort of spectator role in that no commands can be issued from the server (mainly because I have no fucking clue)
 
 The server is multithreaded and can allow up to 3 clients (changeable in the code).
 
