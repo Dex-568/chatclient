@@ -72,11 +72,16 @@ def conn_handle(encstate):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     ip = input('Enter IP to connect to. (Leave blank for localhost): ')
-    if ip == "":
+    if ip == "" or '127.0.0.1':
         ip = 'localhost'
 
     port = input('Enter Port: ')
-    port = int(port)
+    try:
+        port = int(port)
+    except ValueError:
+        print("Port needs to be a number!\n")
+        # who doesn't love a bit of recursion
+        conn_handle(encstate)
 
     if port < 1000 and os.geteuid() != 0:
         print('Binding to privileged ports requires root privileges. Goodbye!\n')
@@ -89,8 +94,6 @@ def conn_handle(encstate):
     # start the whole tls/ssl shit
     if encstate is True:
         # quick little variable change due to ssl cert not liking numbers
-        if ip == '127.0.0.1' or None:
-            ip = 'localhost'
 
         context = ssl.create_default_context()
         # use the cert for now until i make this shit work
@@ -121,7 +124,7 @@ def conn_handle(encstate):
 
         print('Connected to {}:{}'.format(ip, port))
 
-    commands = ['sslinfo', 'exit']
+    commands = ['sslinfo', 'exit', 'help']
 
     if encstate is True:
         while True:
@@ -170,9 +173,21 @@ def conn_handle(encstate):
                             for v, k in zip(certvalues, certkeys):
                                 print('\n'+str(k)+":"+str(v))
 
-                        else:
-                            print('[*] User requested exit, exiting!')
-                            sys.exit(1)
+                        # jesus looking at this shit a few months later racks the brain
+                        elif message == 'help':
+                            help_list = {'help': 'Displays this help message.'}
+
+                            # do the same shit for the main menu help
+                            top = '\n Command ' + ' - '
+                            top += ' Description\n %s\n' % ('-' * 50)
+
+                            for x in sorted(help_list):
+                                dec = help_list[x]
+                                top += ' ' + x + ' - ' + dec + '\n'
+
+                            print(top.rstrip('\n'))
+
+
                     # otherwise ship it off to the server
                     else:
 
@@ -205,12 +220,29 @@ def conn_handle(encstate):
                 else:
                     # slap the username onto the front of the message
                     message = sys.stdin.readline()
-                    message = username+':'+message
-                    s.send(message.encode(encoding='utf-8'))
+                    message = message.strip("\n")
+                    if message in commands:
+                        # sslinfo isn't used for an unencrypted connection, lets hope the user knows that
 
-                    # replay the message back
-                    # because it won't get broadcasted to the sender
-                    print(message)
+                        if message == 'help':
+                            help_list = {'help': 'Displays this help message.'}
+
+                            # do the same shit for the main menu help
+                            top = '\n Command ' + ' - '
+                            top += ' Description\n %s\n' % ('-' * 50)
+
+                            for x in sorted(help_list):
+                                dec = help_list[x]
+                                top += ' ' + x + ' - ' + dec + '\n'
+
+                            print(top.rstrip('\n'))
+                    else:
+                        message = username + ':' + message
+                        s.send(message.encode(encoding='utf-8'))
+
+                        # replay the message back
+                        # because it won't get broadcasted to the sender
+                        print(message)
 
 
 def about():
